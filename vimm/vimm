@@ -1,0 +1,44 @@
+#!/bin/bash - 
+#===============================================================================
+#
+#          FILE: vimm
+# 
+#         USAGE: vimm
+# 
+#   DESCRIPTION: open target file and vim-cheatsheet.md together with vim 
+# 
+#       OPTIONS: ---
+#  REQUIREMENTS: ---
+#          BUGS: ---
+#         NOTES: ---
+#        AUTHOR: Wangyou Zhang (wyz97), wyz-97@sjtu.edu.cn
+#  ORGANIZATION: 
+#       CREATED: 07/20/2018 03:28:01 PM
+#      REVISION:  ---
+#===============================================================================
+
+set -o nounset                              # Treat unset variables as an error
+
+
+#-------------------------------------------------------------------------------
+# read input args
+#-------------------------------------------------------------------------------
+num=$#          # the number of args
+
+if [ $num -ge 2 ] || [ $num = 0 ]; then
+    echo "usage: vimm [target file]"
+    echo -e "\topen target file and vim-cheatsheet.md together with vim"
+    exit 0
+elif [ $num = 1 ]; then
+    file=$1
+    cheatsheet="vim-cheatsheet.md"                                                                                                                                                                               
+    if [ -e $file ]; then
+        # split window vertically
+        exec vim -On $file $cheatsheet
+    else
+        echo "vim $file: No such file or directory."
+        exit 148
+    fi
+fi
+
+return 0
