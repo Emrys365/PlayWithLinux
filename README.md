@@ -12,4 +12,4 @@ vimm [target file] :
 + The `vim-cheatsheet.md` file should be in the same path as `vimm` file.
 
 ### demo:
-![demo](vimm/demo.png)
+![demo](vimm/demo.jpg)
