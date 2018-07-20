@@ -10,3 +10,6 @@ vimm [target file] :
 ```
 + Add the directory of `vimm` to `$PATH` so that you can call `vimm` easily.
 + The `vim-cheatsheet.md` file should be in the same path as `vimm` file.
+
+### demo:
+![demo](vimm/demo.png)
