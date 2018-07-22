@@ -31,7 +31,9 @@ if [ $num -ge 2 ] || [ $num = 0 ]; then
     exit 0
 elif [ $num = 1 ]; then
     file=$1
-    cheatsheet="vim-cheatsheet.md"                                                                                                                                                                               
+    path=$(dirname $0)
+    cheatsheet="${path}/vim-cheatsheet.md"
+    echo $cheatsheet
     if [ -e $file ]; then
         # split window vertically
         exec vim -On $file $cheatsheet
