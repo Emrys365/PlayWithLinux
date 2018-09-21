@@ -1,6 +1,6 @@
 # PlayWithLinux
 
-## vimm
+## 1. vimm
 Open `target file` and `vim-cheatsheet.md` together with `vim`.
 
 ### usage:
@@ -13,3 +13,27 @@ vimm [target file] :
 
 ### demo:
 ![demo](vimm/demo.jpg)
+
+## 2. todo
+
+create ToDo list in the command line
+
+### usage
+
+```
+todo:
+  show all the created todo items
+todo add:
+  create a new todo item
+todo del [id]:
+  delete the item of specified id
+todo clear:
+  clear all the ToDo items.
+todo -h:
+  show the usage of todo
+```
+
+### demo:
+
+![demo](todo/demo.jpg)
+

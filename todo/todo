@@ -1,0 +1,161 @@
+#!/bin/bash - 
+#===============================================================================
+#
+#          FILE: todo
+# 
+#         USAGE: todo
+# 
+#   DESCRIPTION: create ToDo list in the command line
+# 
+#       OPTIONS: ---
+#  REQUIREMENTS: ---
+#          BUGS: ---
+#         NOTES: ---
+#        AUTHOR: Wangyou Zhang (wyz97), wyz-97@sjtu.edu.cn
+#  ORGANIZATION: 
+#       CREATED: 09/21/2018 17:23:59 PM
+#      REVISION:  ---
+#===============================================================================
+
+set -o nounset                              # Treat unset variables as an error
+
+
+function parse() {
+    if [ -e $path ]; then
+        # .todolist exists
+        if [ ! -s $path ]; then
+            # .todolist is empty
+            echo -e "ToDo list is empty.\n"
+            return 0
+        fi
+        OLD_IFS="$IFS"
+        IFS=" "     # change the system seperate symbol temporarily
+        line1=$(head -1 $path)
+        arr=($line1)
+        length=${#arr[@]}
+        if [ $length -eq 0 ]; then
+            echo -e "ToDo list is empty.\n"
+            return 0
+        fi
+        echo -e "ID  \tTime\t\tToDo"
+        while read line
+        do
+            arr=($line)
+            id=${arr[0]}
+            t=${arr[1]}
+            echo -ne "$id\t$t\t"
+            arr[0]=""
+            arr[1]=""
+            for s in ${arr[@]}
+            do
+                echo -n "$s "
+            done
+            echo
+        done < $path
+        IFS="$OLD_IFS"
+    else
+        touch "${path}"      # create .todolist in the same path as todo
+        echo -e "ToDo list is empty.\n"
+        return 0
+    fi
+}
+#-------------------------------------------------------------------------------
+# read input args
+#-------------------------------------------------------------------------------
+num=$#          # the number of args
+file=".todolist"
+path=$(which todo)
+path="$(dirname $path)/$file"
+path2="$(dirname $path)/.todolist.tmp"
+if [ $num -eq 0 ]; then
+    parse $path
+else
+    if [ "$1" = "-h" ]; then
+        echo "usage: todo [-h add del]"
+        echo -e "  todo:\n    show all the created todo items"
+        echo -e "  todo add:\n    create a new todo item"
+        echo -e "  todo del [id]:\n    delete the item of specified id"
+        echo -e "  todo clear:\n    clear all the ToDo items."
+        echo -e "  todo -h:\n    show this message"
+        file=$1
+    elif [ "$1" = "clear" ]; then
+        if [ -e $path ]; then
+            rm $path
+        fi
+        echo "ToDo list cleared!"
+    elif [ "$1" = "add" ]; then
+        if [ -s $path ]; then
+            line=$(tail -1 ${path})
+            OLD_IFS="$IFS"
+            IFS=" "
+            arr=($line)
+            IFS="$OLD_IFS"
+            length=${#arr[@]}
+            if [ $length -eq 0 ]; then
+                id=1
+            else
+                id=${arr[0]}
+                id=$(expr $id + 1)
+            fi
+        else
+            id=1
+        fi
+        read -p "[$id] ToDo: "  # wait for user to input
+        content=$REPLY
+        len=${#content}
+        if [ $len -eq 0 ]; then
+            exit 130
+        fi
+        t=$(date +"%Y-%m-%d")
+        echo -e "ToDo [$id] added!\nID  \tTime\t\tToDo\n$id\t$t\t$content"
+        echo "$id $t $content" >> $path
+    elif [ "$1" = "del" ]; then
+        if [ ! -s $path ]; then
+            echo -e "ToDo list is empty.\nNo item to be deleted!"
+            exit 1
+        fi
+        if [ $num -lt 2 ]; then
+            echo "todo del [id]: missing operand"
+            exit 2
+        fi
+        id2del=$2
+        if [ $id2del -gt 0 ] 2>/dev/null ;then 
+            :
+        else
+            # not a number
+            echo "todo del [id]: non-integer argument id!"
+            exit 2
+        fi
+        num_line=$(awk 'END{print NR}' $path)
+        if [ "$num_line" -lt $id2del ]; then
+            echo "ToDo [$id2del] does not exist!"
+            exit 1
+        fi
+        flag="Flase"
+        OLD_IFS="$IFS"
+        IFS=" "
+        line1=$(head -1 $path)
+        arr=($line1)
+        length=${#arr[@]}
+        if [ $length -eq 0 ]; then
+            echo -e "ToDo list is empty.\nNo item to be deleted!"
+            exit 1
+        fi
+        while read line
+        do
+            arr=($line)
+            id=${arr[0]}
+            if [ $flag = "True" ]; then
+                arr[0]=$(expr $id - 1)
+            fi
+            if [ $id = $id2del ]; then
+                flag="True"
+                echo "ToDo [$id2del] deleted!"
+            else
+                echo ${arr[*]} >> $path2
+            fi
+        done < $path
+        mv -f $path2 $path
+        IFS="$OLD_IFS"
+    fi
+fi

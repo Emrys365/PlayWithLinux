@@ -25,18 +25,24 @@ set -o nounset                              # Treat unset variables as an error
 #-------------------------------------------------------------------------------
 num=$#          # the number of args
 
-if [ $num -ge 2 ] || [ $num = 0 ]; then
+if [ $num -ge 2 ] || [ $num -eq 0 ]; then
     echo "usage: vimm [target file]"
     echo -e "\topen target file and vim-cheatsheet.md together with vim"
     exit 0
-elif [ $num = 1 ]; then
+elif [ $num -eq 1 ]; then
     file=$1
     path=$(dirname $0)
-    cheatsheet="${path}/vim-cheatsheet.md"
-    echo $cheatsheet
+    vim_cheatsheet="${path}/vim-cheatsheet.md"
+    shell_cheatsheet="${path}/shell-cheatsheet.md"
+    echo $vim_cheatsheet
+    if [ "$file" = "-v" ]; then
+        exec vim $vim_cheatsheet
+    elif [ "$file" = "-s" ]; then
+        exec vim $shell_cheatsheet
+    fi
     if [ -e $file ]; then
         # split window vertically
-        exec vim -On $file $cheatsheet
+        exec vim -On $file $vim_cheatsheet
     else
         echo "vim $file: No such file or directory."
         exit 148
