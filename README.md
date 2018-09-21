@@ -35,5 +35,5 @@ todo -h:
 
 ### demo:
 
-![demo](todo/demo.jpg)
+![demo](todo/demo.gif)
 
