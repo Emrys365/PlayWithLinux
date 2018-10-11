@@ -25,6 +25,8 @@ todo:
   show all the created todo items
 todo add:
   create a new todo item
+todo insert [id]:
+  insert a new todo item at [id]
 todo del [id]:
   delete the item of specified id
 todo clear:
