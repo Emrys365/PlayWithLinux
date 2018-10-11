@@ -74,6 +74,7 @@ else
         echo "usage: todo [-h add del]"
         echo -e "  todo:\n    show all the created todo items"
         echo -e "  todo add:\n    create a new todo item"
+        echo -e "  todo insert [id]:\n    insert a new todo item at [id]"
         echo -e "  todo del [id]:\n    delete the item of specified id"
         echo -e "  todo clear:\n    clear all the ToDo items."
         echo -e "  todo -h:\n    show this message"
@@ -109,6 +110,83 @@ else
         t=$(date +"%Y-%m-%d")
         echo -e "ToDo [$id] added!\nID  \tTime\t\tToDo\n$id\t$t\t$content"
         echo "$id $t $content" >> $path
+    elif [ "$1" = "insert" ]; then
+        if [ ! -s $path ]; then
+            echo -e "ToDo list is empty.\nInsert at id=0!\n"
+            id=1
+            read -p "[$id] ToDo: "  # wait for user to input
+            content=$REPLY
+            len=${#content}
+            if [ $len -eq 0 ]; then
+                exit 130
+            fi
+            t=$(date +"%Y-%m-%d")
+            echo -e "ToDo [$id] added!\nID  \tTime\t\tToDo\n$id\t$t\t$content"
+            echo "$id $t $content" >> $path
+            exit 1
+        fi
+        if [ $num -lt 2 ]; then
+            echo "todo insert [id]: missing operand"
+            exit 2
+        fi
+        id2ins=$2
+        if [ $id2ins -gt 0 ] 2>/dev/null ;then 
+            :
+        else
+            # not a number
+            echo "todo del [id]: non-integer argument id!"
+            exit 2
+        fi
+        num_line=$(awk 'END{print NR}' $path)
+        if [ "$num_line" -lt $id2ins ]; then
+            echo "ToDo [$id2del] does not exist!"
+            exit 1
+        fi
+        flag="Flase"
+        OLD_IFS="$IFS"
+        IFS=" "
+        line1=$(head -1 $path)
+        arr=($line1)
+        length=${#arr[@]}
+        if [ $length -eq 0 ]; then
+            echo -e "ToDo list is empty.\nInsert at id=0!"
+            id=1
+            read -p "[$id] ToDo: "  # wait for user to input
+            content=$REPLY
+            len=${#content}
+            if [ $len -eq 0 ]; then
+                exit 130
+            fi
+            t=$(date +"%Y-%m-%d")
+            echo -e "ToDo [$id] added!\nID  \tTime\t\tToDo\n$id\t$t\t$content"
+            echo "$id $t $content" >> $path
+            exit 1
+        fi
+
+        read -p "[$id2ins] ToDo: "  # wait for user to input
+        content=$REPLY
+        len=${#content}
+        if [ $len -eq 0 ]; then
+            exit 130
+        fi
+        t=$(date +"%Y-%m-%d")
+        while read line
+        do
+            arr=($line)
+            id=${arr[0]}
+            if [ $flag = "True" ]; then
+                arr[0]=$(expr $id + 1)
+            fi
+            if [ $id = $id2ins ]; then
+                flag="True"
+                arr[0]=$(expr $id + 1)
+                echo "$id2ins $t $content" >> $path2
+            fi
+            echo ${arr[*]} >> $path2
+        done < $path
+        mv -f $path2 $path
+        IFS="$OLD_IFS"
+        echo -e "ToDo [$id2ins] added!\nID  \tTime\t\tToDo\n$id2ins\t$t\t$content"
     elif [ "$1" = "del" ]; then
         if [ ! -s $path ]; then
             echo -e "ToDo list is empty.\nNo item to be deleted!"
