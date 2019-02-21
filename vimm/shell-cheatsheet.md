@@ -37,6 +37,13 @@ Cheat Sheet for Bash shell
 ---------------------------------
 ## if
 [注] 如无说明，默认采用if [ condition ]
+
+[]内部的逻辑关系用下列指令：
+    -a : and
+    -o : or
+[]之间的逻辑关系用下列指令：
+    && : and
+    || : or
 ### 整数相关
 1. $m -lt $n    :  整数$m小于$n
 2. $m -gt $n    :  整数$m大于$n
@@ -65,6 +72,8 @@ Cheat Sheet for Bash shell
 5. -r file      :  file有可读权限
 6. -w file      :  file有可写权限
 7. -x file      :  file有可执行权限(若为目录，则有目录搜索权限)
+### 命令相关
+1. command -v xxx     : 命令xxx存在时返回0，否则返回1
 七、常用命令
 ---------------------------------
 1. tail -1      :  获取文件最后一行
