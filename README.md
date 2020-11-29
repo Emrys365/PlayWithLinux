@@ -81,4 +81,19 @@ E. Vincent, R. Gribonval, and C. Févotte, “Performance measurement in blind 
 >>> print(bib.to_plaintext(style='IEEEbib'))
 Emmanuel Vincent, Rémi Gribonval, and Cédric Févotte, “Performance measurement in blind audio source separation,” IEEE Trans. Audio, Speech, Language Process., vol. 14, no. 4, pp. 1462–1469, 2006.
 
+>>> refstring = r'''
+F. Weninger, S. Watanabe, Y. Tachioka, and B. Schuller, “Deep recurrent de-noising auto-encoder and blind de-reverberation for reverberated speech recognition,” in 2014 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2014, pp. 4623–4627.
+'''
+
+>>> bib2 = BibTeXEntry.plaintext_to_bibtex(refstring)
+
+>>> bib2
+@inproceedings{Deep-Weninger2014,
+  title={Deep recurrent de-noising auto-encoder and blind de-reverberation for reverberated speech recognition},
+  author={Weninger, F. and Watanabe, S. and Tachioka, Y. and Schuller, B.},
+  booktitle={2014 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP). IEEE},
+  pages={4623--4627},
+  year={2014},
+}
+
 ```

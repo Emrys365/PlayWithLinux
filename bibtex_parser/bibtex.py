@@ -991,14 +991,13 @@ class BibTeXEntry:
                 # parse author list (add necessary {} pairs)
                 #  - abbreviated names can be followed by a period, and possibly not
                 is_first_name_abbr = False
-                lst_authors = []
-                split_authors = re.split(",|and", authors)
+                split_authors = [
+                    it.strip() for it in re.split(",|and", authors) if it.strip() != ""
+                ]
                 length = len(split_authors)
-                for author in split_authors:
-                    author = re.sub(r"\s+", " ", author.strip())
-                    names = author.split()
-                    if len(names) == 0:
-                        continue
+                for i in range(length):
+                    split_authors[i] = re.sub(r"\s+", " ", split_authors[i].strip())
+                    names = split_authors[i].split()
                     is_first_name_abbr = (
                         is_first_name_abbr
                         or len(names[0]) == 1
@@ -1014,9 +1013,8 @@ class BibTeXEntry:
                     if not is_first_name_abbr:
                         break
 
+                lst_authors = []
                 for i, author in enumerate(split_authors):
-                    if author == " ":
-                        continue
                     if i == length - 1 and author[-6:] == "et al.":
                         names = re.split(r"\s+", author[:-6])
                     else:
@@ -1054,9 +1052,7 @@ class BibTeXEntry:
                     r"conference|proc\.|proc|proceedings", booktitle, re.IGNORECASE
                 ):
                     bib.type = "inproceedings"
-                    booktitle = re.sub(
-                        r"in\s+", "", booktitle, re.IGNORECASE
-                    )
+                    booktitle = re.sub(r"in\s+", "", booktitle, re.IGNORECASE)
 
                 adjacent_to_publisher = True
                 string = "".join(rest).strip()
@@ -1104,9 +1100,9 @@ class BibTeXEntry:
                 word_lst = bib.tags["title"].split()
                 word = word_lst[0].capitalize()
                 for w in word_lst:
-                    if re.match("a|an|as|at|by|for|in|on|to", w, re.IGNORECASE):
-                        continue
-                    word = w.capitalize()
+                    if not re.match("a|an|as|at|by|for|in|on|to", w, re.IGNORECASE):
+                        word = w.capitalize().replace("-", "")
+                        break
                 ffname = bib.tags.get("author", [("Unknown",)])[0][-1].capitalize()
                 year = bib.tags.get("year", 0)
                 bib.name = "%s-%s%d" % (word, ffname, year)
