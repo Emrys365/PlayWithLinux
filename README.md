@@ -54,13 +54,13 @@ A (unpolished) Python script for parsing BibTeX
 >>> from bibtex import BibTeXEntry
 >>> bibstring = r'''
 @article{Performance-Vincent2006,
-  title={Performance measurement in blind audio source separation},
-  author={Vincent, Emmanuel and Gribonval, R{\'e}mi and F{\'e}votte, C{\'e}dric},
-  journal=ieee-taslp,
-  volume={14},
-  number={4},
-  pages={1462--1469},
-  year={2006},
+  author = {Vincent, Emmanuel and Gribonval, R{\'e}mi and F{\'e}votte, C{\'e}dric}, 
+    journal = ieee-taslp, 
+  volume = {14}, 
+    number = 4, 
+  pages =  {1462-1469}, 
+    year =   {2006}, 
+  title =  "Performance measurement in blind audio source separation" 
 }
 '''
 >>> bib = BibTeXEntry(bibstring)
