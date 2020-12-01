@@ -874,7 +874,7 @@ class BibTeXEntry:
                     if style == "IEEEbib":
                         name_str = first_name + " " + last_name
                     elif style == "IEEEtran":
-                        first_name_abbr = re.sub(r"(\s*\w)\S*", "\\1.", first_name)
+                        first_name_abbr = re.sub(r"(\s*-?\w)[^-\s]*", "\\1.", first_name)
                         name_str = first_name_abbr + " " + last_name
                 if i == num_authors - 2:
                     if authors[-1] == ("others",):
