@@ -958,7 +958,7 @@ class BibTeXEntry:
             bibtex (BibTeX): parsed BibTeXEntry object
         """
         bib = BibTeXEntry("")
-        string = plaintext.strip()
+        string = re.sub(r"\s+", " ", plaintext.strip())
         # convert unicode comma/colon to ascii comma/colon
         string = string.replace(u"\uff0c", ",").replace(u"\uff1a", ":")
         if string.endswith("."):
@@ -987,41 +987,24 @@ class BibTeXEntry:
                             "No author list before title is detected!"
                         )
                 authors = match.group(1).strip()
+                authors = re.sub(r"et al\.", ", et al.", authors)
                 assert len(authors) > 0
                 # parse author list (add necessary {} pairs)
                 #  - abbreviated names can be followed by a period, and possibly not
-                is_first_name_abbr = False
                 split_authors = [
                     it.strip() for it in re.split(",|and", authors) if it.strip() != ""
                 ]
-                length = len(split_authors)
-                for i in range(length):
-                    split_authors[i] = re.sub(r"\s+", " ", split_authors[i].strip())
-                    names = split_authors[i].split()
-                    is_first_name_abbr = (
-                        is_first_name_abbr
-                        or len(names[0]) == 1
-                        or (len(names[0]) == 2 and names[0][-1] == ".")
-                    )
-                    # special case: X.-Y. LastName
-                    is_first_name_abbr = is_first_name_abbr or all(
-                        [
-                            len(n) <= 1 or (len(n) == 2 and n[-1] == ".")
-                            for n in names[0].split("-")
-                        ]
-                    )
-                    if not is_first_name_abbr:
-                        break
-
                 lst_authors = []
                 for i, author in enumerate(split_authors):
-                    if i == length - 1 and author[-6:] == "et al.":
-                        names = re.split(r"\s+", author[:-6])
+                    if author == "et al." and i == len(split_authors) - 1:
+                        lst_authors.append(("others",))
                     else:
-                        names = re.split(r"\s+", author)
-                    first_name = " ".join(names[:-1]).strip()
-                    last_name = names[-1]
-                    lst_authors.append((first_name, last_name))
+                        names = author.split()
+                        first_name = raw_string_to_bib_style(
+                            " ".join(names[:-1]).strip()
+                        )
+                        last_name = raw_string_to_bib_style(names[-1])
+                        lst_authors.append((first_name, last_name))
                 bib.tags["author"] = lst_authors
 
                 string = string[match.end() - 1 :]
@@ -1045,7 +1028,7 @@ class BibTeXEntry:
                 )
 
                 booktitle, rest = string[match.end() :].strip().split(",", maxsplit=1)
-                booktitle = re.sub(r"\s+", " ", booktitle.strip())
+                booktitle = booktitle.strip()
                 if re.search(r"journal|transactions|arxiv", booktitle, re.IGNORECASE):
                     bib.type = "article"
                 elif re.search(
@@ -1092,9 +1075,9 @@ class BibTeXEntry:
                         booktitle += ", %s" % item
 
                 if bib.type == "article":
-                    bib.tags["journal"] = booktitle
+                    bib.tags["journal"] = raw_string_to_bib_style(booktitle)
                 elif bib.type == "inproceedings":
-                    bib.tags["booktitle"] = booktitle
+                    bib.tags["booktitle"] = raw_string_to_bib_style(booktitle)
 
                 # Determine the entry name based on title, author, and year
                 word_lst = bib.tags["title"].split()
