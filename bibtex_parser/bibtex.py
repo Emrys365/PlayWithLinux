@@ -821,7 +821,7 @@ class BibTeXEntry:
         for k, v in {"\b": "\\b", "\r": "\\r", "\t": "\\t", "\v": "\\v"}.items():
             if k in string_new:
                 string_new = string_new.replace(k, v)
-        if '\'' in string_new or "\"" in string_new:
+        if re.match(r'''[^\\]'|"''', string_new):
             print(
                 "WARNING: potential special characters \\' and \\\" are not handled.\n"
                 "Please escape them manually (if applicable) by using \\\\' and \\\\\"."
