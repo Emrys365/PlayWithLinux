@@ -217,7 +217,9 @@ def parse_author_list(string):
         authors (List[Tuple(First name + Middle name, Last name)]): list of authors
         rest (str): remaining part of string
     """
-    string_new = string.strip()
+    # import pudb
+    # pudb.set_trace()
+    string_new = string.strip().replace(u"\u2013", "-").replace(u"\u2014", "-")
     if string_new == "":
         return [], ""
     if string_new[0] == "{":
@@ -277,7 +279,7 @@ def parse_author_list(string):
             continue
         if "," in author_name:
             last_name, first_name = author_name.split(",")
-            last_name = re.sub(r"^\s*\{(.*)?\}?\s*$", "{\\1}", last_name).strip()
+            last_name = re.sub(r"^\s*\{(.*)?\}\s*$", "{\\1}", last_name).strip()
             first_name = re.sub(r"^\s*\{(.*)?\}\s*$", "{\\1}", first_name).strip()
         elif (
             author_name[0] == "{"
@@ -567,6 +569,7 @@ def get_raw_text(string, not_change_letter_case=False):
             string_new = string_new.replace(pattern, special_latex_symbols[pattern])
         if "\\" not in string_new:
             break
+
         for pattern in combining_symbols:
             if pattern not in string_new:
                 continue
@@ -815,6 +818,14 @@ class BibTeXEntry:
 
     def __parse_string(self, string):
         string_new = string.strip()
+        for k, v in {"\b": "\\b", "\r": "\\r", "\t": "\\t", "\v": "\\v"}.items():
+            if k in string_new:
+                string_new = string_new.replace(k, v)
+        if '\'' in string_new or "\"" in string_new:
+            print(
+                "WARNING: potential special characters \\' and \\\" are not handled.\n"
+                "Please escape them manually (if applicable) by using \\\\' and \\\\\"."
+            )
 
         # 1st line: @pub_type{entry_name,
         assert string_new.startswith("@") and string_new.endswith("}")
@@ -874,7 +885,9 @@ class BibTeXEntry:
                     if style == "IEEEbib":
                         name_str = first_name + " " + last_name
                     elif style == "IEEEtran":
-                        first_name_abbr = re.sub(r"(\s*-?\w)[^-\s]*", "\\1.", first_name)
+                        first_name_abbr = re.sub(
+                            r"(\s*-?\w)[^-\s]*", "\\1.", first_name
+                        )
                         name_str = first_name_abbr + " " + last_name
                 if i == num_authors - 2:
                     if authors[-1] == ("others",):
@@ -1062,7 +1075,9 @@ class BibTeXEntry:
                         r"(?:pp\.|pp|page|pages)\s*([-\d]+)", item, re.IGNORECASE
                     )
                     if match:
-                        bib.tags["pages"] = parse_number_range("{%s}" % match.group(1))[0]
+                        bib.tags["pages"] = parse_number_range("{%s}" % match.group(1))[
+                            0
+                        ]
                         adjacent_to_publisher = False
                         continue
 
