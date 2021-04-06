@@ -208,6 +208,70 @@ predefined_string = {
 }
 
 
+def remove_brace_pair(string):
+    """Remove all paired braces from the input string.
+    
+    Note: \{ and \} are ignored for the special grammar in LaTeX.
+    """
+    pattern = r'(^\{|(?<=[^\\])\{|(?<=[^\\])\})'
+    left_brace_pos = []
+    left_brace = False
+    split_parts = re.split(pattern, string)
+    for i, part in enumerate(split_parts):
+        if len(part) == 0:
+            continue
+        if part == '{':
+            left_brace = True
+            left_brace_pos.append(i)
+        elif part == '}' and left_brace:
+            split_parts[left_brace_pos.pop(-1)] = ''
+            split_parts[i] = ''
+            left_brace = len(left_brace_pos) != 0
+    return ''.join(split_parts)
+
+
+def remove_redundant_brace_pair(string, keep_inner=True):
+    """Remove all nested paired braces from the input string.
+    
+    Note: \{ and \} are ignored for the special grammar in LaTeX.
+
+    Args:
+        string (str): input string
+        keep_inner (bool): If True, only keep the paired braces nested inside;
+                           If False, only keep the outside paired braces.
+    """
+    pattern = r'(^\{|(?<=[^\\])\{|(?<=[^\\])\})'
+    brace_pairs = []
+    left_brace_pos = []
+    left_brace = False
+    split_parts = re.split(pattern, string)
+    for i, part in enumerate(split_parts):
+        if len(part) == 0:
+            continue
+        if part == '{':
+            left_brace = True
+            left_brace_pos.append(i)
+        elif part == '}' and left_brace:
+            pos = left_brace_pos.pop(-1)
+            left_brace = len(left_brace_pos) != 0
+            if keep_inner:
+                brace_pairs.append((pos, i))
+            elif left_brace:
+                split_parts[pos] = ''
+                split_parts[i] = ''
+    if keep_inner:
+        brace_pairs = sorted(brace_pairs)
+        for idx, (left, right) in enumerate(brace_pairs):
+            for l, r in brace_pairs:
+                if left < l and r < right:
+                    split_parts[left] = ''
+                    split_parts[right] = ''
+                    break
+                elif l > right:
+                    break
+    return ''.join(split_parts)
+
+
 def parse_author_list(string):
     """Parse the author list with various formats.
 
@@ -279,8 +343,8 @@ def parse_author_list(string):
             continue
         if "," in author_name:
             last_name, first_name = author_name.split(",")
-            last_name = re.sub(r"^\s*\{(.*)?\}\s*$", "{\\1}", last_name).strip()
-            first_name = re.sub(r"^\s*\{(.*)?\}\s*$", "{\\1}", first_name).strip()
+            last_name = re.sub(r"^\s*\{(.*)?\}\s*$", "\\1", last_name).strip()
+            first_name = re.sub(r"^\s*\{(.*)?\}\s*$", "\\1", first_name).strip()
         elif (
             author_name[0] == "{"
             and author_name[-1] == "}"
@@ -306,8 +370,8 @@ def parse_author_list(string):
                     ):
                         count += 1
                     if count == 0:
-                        last_name = " ".join(author_name[idx:].split())
-                        first_name = " ".join(author_name[:idx].split())
+                        last_name = re.sub(r'\s+', ' ', remove_brace_pair(author_name[idx:]).strip())
+                        first_name = re.sub(r'\s+', ' ', remove_brace_pair(author_name[:idx]).strip())
                         break
                 else:
                     raise ValueError("Invalid author list ...}")
@@ -545,7 +609,7 @@ def parse_string(string):
     else:
         raise ValueError("Invalid string")
 
-    return ret_str, rest
+    return remove_redundant_brace_pair(ret_str), rest
 
 
 def get_raw_text(string, not_change_letter_case=False):
