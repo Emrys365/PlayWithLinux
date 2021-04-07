@@ -174,6 +174,38 @@ punctuation_encoding_to_code = {
     ">": "\\textgreater{}",
 }
 
+number_suffix = {
+    "1": "st",
+    "2": "nd",
+    "3": "rd",
+}
+
+month2number = {
+    "jan": 1,
+    "january": 1,
+    "feb": 2,
+    "febuary": 2,
+    "mar": 3,
+    "march": 3,
+    "apr": 4,
+    "april": 4,
+    "may": 5,
+    "jun": 6,
+    "june": 6,
+    "jul": 7,
+    "july": 7,
+    "aug": 8,
+    "august": 8,
+    "sep": 9,
+    "september": 9,
+    "oct": 10,
+    "october": 10,
+    "nov": 11,
+    "november": 11,
+    "dec": 12,
+    "december": 12,
+}
+
 predefined_string = {
     "icassp": "Proc. IEEE ICASSP",
     # "icassp": "Proc. IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP)",
@@ -457,6 +489,8 @@ def parse_number_range(string):
                         )
                 else:
                     raise ValueError("Invalid match for number range")
+            elif number_range_str.rstrip(".").lower() in month2number:
+                number_range = month2number[number_range_str.rstrip(".").lower()]
             else:
                 raise ValueError("No matched number range: {xxx--yyy} or {xxx}")
 
@@ -506,6 +540,8 @@ def parse_number_range(string):
                         )
                 else:
                     raise ValueError("Invalid match for number range")
+            elif number_range_str.rstrip(".").lower() in month2number:
+                number_range = month2number[number_range_str.rstrip(".").lower()]
             else:
                 raise ValueError('No matched number range: "xxx--yyy" or "xxx"')
 
@@ -519,7 +555,7 @@ def parse_number_range(string):
             raise ValueError("Invalid number range xxx")
 
     elif re.match(r"\w", string_new[0]):
-        # predefined_string
+        # predefined_string or month string (e.g. Sep)
         for i in range(1, len(string_new)):
             if re.match(r"[^-\w]", string_new[i]):
                 number_range = string_new[:i].strip()
@@ -532,10 +568,12 @@ def parse_number_range(string):
             number_range = string_new
             rest = ""
 
-        if number_range not in predefined_string:
+        if number_range.rstrip(".").lower() in month2number:
+            number_range = month2number[number_range.rstrip(".").lower()]
+        elif number_range not in predefined_string:
             print('Warning: "%s" is not defined in `predefined_string`!' % number_range)
-        # for distinguishing the predefined string
-        number_range = "#" + number_range
+            # for distinguishing the predefined string
+            number_range = "#" + number_range
     else:
         raise ValueError("Invalid number range string")
 
@@ -811,7 +849,7 @@ class BibTeXEntry:
     which can be converted back into bib string or plain text as well.
     """
 
-    def __init__(self, bibstring, indent=2):
+    def __init__(self, bibstring, indent=2, force_name=False):
         # tags including 'title' and 'author'
         self.tags = {}
         self.type = "unknown"
@@ -828,9 +866,24 @@ class BibTeXEntry:
             "number",
             "pages",
             "year",
+            "institution",
             "organization",
+            "address",
             "publisher",
+            "note",
         )
+        if force_name and (
+            'title' in self.tags
+            and 'author' in self.tags
+            and 'year' in self.tags
+        ):
+            self.name = "{}-{}{}".format(
+                re.split(r'\W', remove_brace_pair(
+                    self.tags["title"]
+                ))[0],
+                re.sub(r'\s+', '', self.tags["author"][0][-1]),
+                self.tags["year"]
+            )
 
     def __repr__(self):
         return str(self)
@@ -856,7 +909,9 @@ class BibTeXEntry:
                     [", ".join(name[-1:] + name[:-1]) for name in self.tags[k]]
                 )
                 s += "{}{}={{{}}},\n".format(space, k, authors_str)
-            elif k in ("volume", "number", "pages", "year"):
+            elif k in (
+                "edition", "series", "chapter", "volume", "number", "pages", "month", "year"
+            ):
                 number_range = self.tags[k]
                 if number_range is None:
                     num_str = ""
@@ -864,6 +919,8 @@ class BibTeXEntry:
                     num_str = "{}--{}".format(number_range[0], number_range[1])
                 elif isinstance(number_range, int):
                     num_str = str(number_range)
+                elif number_range.startswith("#"):
+                    num_str = number_range
                 else:
                     raise ValueError(
                         "Unexpected value for {}: {}".format(k, number_range)
@@ -881,8 +938,23 @@ class BibTeXEntry:
         return s + "}"
 
     def __parse_string(self, string):
-        string_new = string.strip()
-        for k, v in {"\b": "\\b", "\r": "\\r", "\t": "\\t", "\v": "\\v"}.items():
+        string = string.strip()
+        # remove commented parts
+        string_new, prev = "", ""
+        commented = False
+        for c in string:
+            if c == "%" and prev != "\\":
+                commented = True
+            elif not commented:
+                string_new += c
+            elif c == "\n":
+                commented = False
+                string_new += c
+
+        # add possiblly missing "\\"
+        for k, v in {
+            "\a": "\\a", "\b": "\\b", "\r": "\\r", "\t": "\\t", "\v": "\\v"
+        }.items():
             if k in string_new:
                 string_new = string_new.replace(k, v)
         if re.match(r'''[^\\]'|"''', string_new):
@@ -892,7 +964,7 @@ class BibTeXEntry:
             )
 
         # 1st line: @pub_type{entry_name,
-        assert string_new.startswith("@") and string_new.endswith("}")
+        assert string_new.startswith("@") and string_new.endswith("}"), string_new
         first_line, rest = string_new[:-1].split(",", maxsplit=1)
         # self.type: publication type
         # self.name: entry name/label
@@ -913,7 +985,9 @@ class BibTeXEntry:
             if keyword == "author":
                 # parse author list
                 value, rest = parse_author_list(rest)
-            elif keyword in ("volume", "number", "pages", "year"):
+            elif keyword in (
+                "edition", "series", "chapter", "volume", "number", "pages", "month", "year"
+            ):
                 # parse number / number range
                 value, rest = parse_number_range(rest)
             else:
@@ -966,7 +1040,7 @@ class BibTeXEntry:
             if isinstance(year, str):
                 year = get_raw_text(year)
 
-            if self.type == "article":
+            if self.type in ("article", "misc"):
                 pub = get_raw_text(self.tags["journal"], not_change_letter_case=True)
                 vol_num_pages = ""
                 for key in ("volume", "number", "pages"):
@@ -990,12 +1064,12 @@ class BibTeXEntry:
                             pages = "{}\u2013{}".format(pages[0], pages[1])
                         vol_num_pages += "pp. {}, ".format(pages)
                 if vol_num_pages == "":
-                    string += u"\u201c{},\u201d {}, {}.".format(title, pub, year)
+                    string += u"\u201c{},\u201d {}, {}".format(title, pub, year)
                 else:
-                    string += u"\u201c{},\u201d {}, {}{}.".format(
+                    string += u"\u201c{},\u201d {}, {}{}".format(
                         title, pub, vol_num_pages, year
                     )
-            elif self.type == "inproceedings":
+            elif self.type in ("inproceedings", "incollection"):
                 pub = get_raw_text(self.tags["booktitle"], not_change_letter_case=True)
                 pages = ""
                 for key in ("pages",):
@@ -1012,15 +1086,103 @@ class BibTeXEntry:
                         else:
                             pages = "pp. {}".format(pages)
                 if pages == "":
-                    string += u"\u201c{},\u201d in {}, {}.".format(title, pub, year)
+                    string += u"\u201c{},\u201d in {}, {}".format(title, pub, year)
                 else:
-                    string += u"\u201c{},\u201d in {}, {}, {}.".format(
+                    string += u"\u201c{},\u201d in {}, {}, {}".format(
                         title, pub, year, pages
                     )
+            elif self.type == "book":
+                pub = get_raw_text(self.tags["publisher"], not_change_letter_case=True)
+                ed_ser, vol_pages = "", ""
+                for key in ("edition", "series", "volume"):
+                    if self.tags.get(key, None) is None:
+                        continue
+                    if key == "edition":
+                        edition = self.tags[key]
+                        if isinstance(edition, str):
+                            edition = get_raw_text(edition)
+                        else:
+                            edition = str(edition)
+                        for no in number_suffix:
+                            if edition.endswith(no):
+                                edition += number_suffix[no]
+                                break
+                        else:
+                            edition += "th"
+                        ed_ser += "{} ed., ".format(edition)
+                    elif key == "series":
+                        series = self.tags[key]
+                        if isinstance(series, str):
+                            series = get_raw_text(series)
+                        ed_ser += "ser. {}, ".format(series)
+                    elif key == "volume":
+                        volume = self.tags[key]
+                        if isinstance(volume, str):
+                            volume = get_raw_text(volume)
+                        vol_pages += "vol. {}, ".format(volume)
+                    elif key == "pages":
+                        pages = self.tags[key]
+                        if isinstance(pages, str):
+                            pages = re.sub(r"-+", u"\u2013", get_raw_text(pages))
+                        elif isinstance(pages, tuple):
+                            pages = "{}\u2013{}".format(pages[0], pages[1])
+                        vol_pages += "pp. {}, ".format(pages)
+                # TODO: need to remove quotes around the title
+                if ed_ser == "":
+                    string += u"\u201c{},\u201d {}, ".format(title, pub)
+                else:
+                    string += u"\u201c{},\u201d {}{}, ".format(title, ed_ser, pub)
+                if vol_pages == "":
+                    string += f"{year}"
+                else:
+                    string += f"{vol_pages}{year}"
+            elif self.type == "manual":
+                if "organization" in self.tags:
+                    pub = get_raw_text(self.tags["organization"], not_change_letter_case=True)
+                else:
+                    pub = get_raw_text(self.tags["address"], not_change_letter_case=True)
+                if "edition" in self.tags:
+                    edition = self.tags["edition"]
+                    if isinstance(edition, str):
+                        edition = get_raw_text(edition)
+                    else:
+                        edition = str(edition)
+                    for no in number_suffix:
+                        if edition.endswith(no):
+                            edition += number_suffix[no]
+                            break
+                    else:
+                        edition += "th"
+                    ed = "{} ed., ".format(edition)
+                    string += u"\u201c{},\u201d {}{}, {}".format(title, ed, pub, year)
+                else:
+                    # TODO: need to remove quotes around the title
+                    string += u"\u201c{},\u201d {}, {}".format(title, pub, year)
+            elif self.type == "techreport":
+                if "institution" in self.tags:
+                    pub = get_raw_text(self.tags["institution"], not_change_letter_case=True)
+                else:
+                    pub = get_raw_text(self.tags["address"], not_change_letter_case=True)
+
+                if "number" in self.tags:
+                    number = self.tags["number"]
+                    if isinstance(number, str):
+                        number = get_raw_text(number)
+                    num = "Tech. Rep. {}, ".format(number)
+                else:
+                    num = "Tech. Rep., "
+                    
+                string += u"\u201c{},\u201d {}, {}{}".format(
+                    title, pub, num, year
+                )
             else:
                 raise ValueError("Unsupported publication type: %s" % self.type)
         else:
             raise ValueError("Unsupported style: %s" % style)
+        if self.tags.get("note", None) is not None:
+            string += ", {}.".format(self.tags["note"])
+        else:
+            string += "."
         return string
 
     @staticmethod
