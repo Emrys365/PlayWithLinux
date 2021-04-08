@@ -877,11 +877,22 @@ class BibTeXEntry:
             and 'author' in self.tags
             and 'year' in self.tags
         ):
+            name = "notdefined"
+            title = re.sub(
+                r'(\w+)\s+(?=\d)', '\\1',
+                remove_brace_pair(self.tags["title"]).replace("-", "_").replace(".", "_"),
+            )
+            for each in re.split(r'\W', title):
+                if not re.match("^(a|an|as|at|by|for|in|on|to|the)$", each, re.IGNORECASE):
+                    name = each if each[0].isupper() else each[0].upper() + each[1:]
+                    break
+            else:
+                name = "notdefined"
+            author = re.sub(r'\s+', '', self.tags["author"][0][-1])
+            assert len(author) > 0
             self.name = "{}-{}{}".format(
-                re.split(r'\W', remove_brace_pair(
-                    self.tags["title"]
-                ))[0],
-                re.sub(r'\s+', '', self.tags["author"][0][-1]),
+                name,
+                get_raw_text(author, not_change_letter_case=True).encode('ascii', 'ignore').decode(),
                 self.tags["year"]
             )
 
@@ -938,7 +949,7 @@ class BibTeXEntry:
         return s + "}"
 
     def __parse_string(self, string):
-        string = string.strip()
+        string = string.strip().replace("\t", " ")
         # remove commented parts
         string_new, prev = "", ""
         commented = False
@@ -995,6 +1006,20 @@ class BibTeXEntry:
                 value, rest = parse_string(rest)
 
             self.tags[keyword] = value
+
+        # Normalize arXiv bibstring
+        if (
+            "arxiv" in self.tags.get("archiveprefix", "").lower()
+            and "eprint" in self.tags
+        ):
+            self.tags["journal"] = "arXiv preprint arXiv:{}".format(
+                self.tags["eprint"]
+            )
+            self.tags.pop("archiveprefix")
+            self.tags.pop("eprint")
+            if "primaryclass" in self.tags:
+                self.tags.pop("primaryclass")
+
 
     def to_plaintext(self, style="IEEEtran"):
         """Render the reference string in IEEE style.
@@ -1324,7 +1349,7 @@ class BibTeXEntry:
                 word_lst = bib.tags["title"].split()
                 word = word_lst[0].capitalize()
                 for w in word_lst:
-                    if not re.match("a|an|as|at|by|for|in|on|to", w, re.IGNORECASE):
+                    if not re.match("^(a|an|as|at|by|for|in|on|to)$", w, re.IGNORECASE):
                         word = w.capitalize().replace("-", "")
                         break
                 ffname = bib.tags.get("author", [("Unknown",)])[0][-1].capitalize()

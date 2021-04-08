@@ -144,7 +144,7 @@ class BibTeXDatabase:
             )
         except sqlite3.IntegrityError:
             return f"Record already exists. Nothing to do."
-        return f"Inseted with UID={self.__cursor.lastrowid}."
+        return f"Inserted with UID={self.__cursor.lastrowid}."
 
     def add_refstr(self, refstr, name=None, type="article", style="IEEEtran"):
         bib = BibTeXEntry.plaintext_to_bibtex(refstr, default_type=type)
@@ -188,6 +188,8 @@ class BibTeXDatabase:
         return length
 
     def add_fromfile(self, bibfile, skipNlines=0):
+        count_insert = 0
+        count_duplicate = 0
         level = 0
         found = False
         bibstring = ""
@@ -212,9 +214,23 @@ class BibTeXDatabase:
                     bibstring = bibstring + line
                     if level == 0:
                         found = False
-                        self.add_bibtex(bibstring)
+                        try:
+                            ret = self.add_bibtex(bibstring)
+                        except:
+                            print(bibstring)
+                            raise
+                        if ret.startswith("Inserted with UID="):
+                            count_insert += 1
+                        else:
+                            count_duplicate += 1
                         bibstring = ""
+        if count_insert == 0:
+            return f"No new records found in {bibfile}. Nothing to do.\n{count_duplicate} duplicate records already exist."
+        else:
+            return f"Inserted {count_insert} new record(s).\n{count_duplicate} duplicate records already exist."
 
+    def clear(self):
+        self.__cursor.execute(f"DELETE FROM {self.name}")
 
 def get_parser():
     parser = argparse.ArgumentParser()
