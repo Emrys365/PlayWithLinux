@@ -368,7 +368,7 @@ def parse_author_list(string):
     authors = []
     if re.search(r"([^\\]|^)\{\s*\}", author_list_str):
         raise ValueError('Empty content "{ }" in author list')
-    author_list = author_list_str.split("and")
+    author_list = re.split(r"\band\b", author_list_str)
     for author_name in author_list:
         author_name = author_name.strip()
         if author_name == "":
@@ -1256,7 +1256,7 @@ class BibTeXEntry:
                 # parse author list (add necessary {} pairs)
                 #  - abbreviated names can be followed by a period, and possibly not
                 split_authors = [
-                    it.strip() for it in re.split(",|and", authors) if it.strip() != ""
+                    it.strip() for it in re.split(r",|\band\b", authors) if it.strip() != ""
                 ]
                 lst_authors = []
                 for i, author in enumerate(split_authors):

@@ -87,6 +87,13 @@ class BibTeXDatabase:
                 f"({', '.join(['?' for _ in keys])})",
                 tuple(kwargs[k] for k in keys)
             )
+        elif option == "update":
+            self.__cursor.execute(
+                f"UPDATE {self.name} SET " +
+                ", ".join([f"{k} = ?" for k in keys if k != "name"]) +
+                " WHERE name = ?",
+                tuple(kwargs[k] for k in keys if k != "name") + (kwargs["name"],),
+            )
         elif option == "delete":
             self.__cursor.execute(
                 f"DELETE FROM {self.name} WHERE " +
@@ -103,36 +110,36 @@ class BibTeXDatabase:
         else:
             raise ValueError(f"Unsupported option: {option}")
 
-    def add_bibtex(self, bibtex, name=None, style="IEEEtran"):
-        def proc_dict(dic):
-            ret = {}
-            for k, v in dic.items():
-                if v is None or (hasattr(v, "__len__") and len(v) == 0):
-                    continue
-                if isinstance(v, dict):
-                    ret[k] = {k2: proc_dict(v2) for k2, v2 in v.items()}
-                elif k in ("title", "journal", "booktitle") and isinstance(v, str):
-                    ret[k] = get_raw_text(v, not_change_letter_case=True)
-                elif isinstance(v, str):
-                    ret[k] = remove_brace_pair(v)
-                elif k == "author" and isinstance(v, (list, tuple)):
-                    ret[k] = remove_brace_pair(
-                        re.sub(
-                            r', others$', ' et al.',
-                            ", ".join([
-                                get_raw_text(" ".join(each), not_change_letter_case=True)
-                                for each in v
-                            ]),
-                        )
+    def __proc_bib_dict(self, dic):
+        ret = {}
+        for k, v in dic.items():
+            if v is None or (hasattr(v, "__len__") and len(v) == 0):
+                continue
+            if isinstance(v, dict):
+                ret[k] = {k2: self.__proc_bib_dict(v2) for k2, v2 in v.items()}
+            elif k in ("title", "journal", "booktitle") and isinstance(v, str):
+                ret[k] = get_raw_text(v, not_change_letter_case=True)
+            elif isinstance(v, str):
+                ret[k] = remove_brace_pair(v)
+            elif k == "author" and isinstance(v, (list, tuple)):
+                ret[k] = remove_brace_pair(
+                    re.sub(
+                        r', others$', ' et al.',
+                        ", ".join([
+                            get_raw_text(" ".join(each), not_change_letter_case=True)
+                            for each in v
+                        ]),
                     )
-                elif k == "pages" and isinstance(v, (list, tuple)):
-                    ret[k] = remove_brace_pair(u"\u2013".join([str(vv) for vv in v]))
-                else:
-                    ret[k] = v
-            return ret
+                )
+            elif k == "pages" and isinstance(v, (list, tuple)):
+                ret[k] = remove_brace_pair(u"\u2013".join([str(vv) for vv in v]))
+            else:
+                ret[k] = v
+        return ret
 
+    def add_bibtex(self, bibtex, name=None, style="IEEEtran"):
         bib = bibtex if isinstance(bibtex, BibTeXEntry) else BibTeXEntry(bibtex, force_name=True)
-        tags = proc_dict(bib.tags)
+        tags = self.__proc_bib_dict(bib.tags)
         try:
             self.operate(
                 "insert",
@@ -149,6 +156,41 @@ class BibTeXDatabase:
     def add_refstr(self, refstr, name=None, type="article", style="IEEEtran"):
         bib = BibTeXEntry.plaintext_to_bibtex(refstr, default_type=type)
         return self.add_bibtex(bib, name=name, style=style)
+
+    def update_bibtex(self, bibtex, name=None, style="IEEEtran"):
+        bib = bibtex if isinstance(bibtex, BibTeXEntry) else BibTeXEntry(bibtex, force_name=True)
+        if name is not None:
+            bib.name = name
+        tags = self.__proc_bib_dict(bib.tags)
+        match = self.search_bibtex(name=bib.name)
+        if len(match) != 1:
+            return f"{len(match)} records found. Do nothing."
+        # bib_existing = BibTeXEntry(match[0][3])
+        # bib_existing.type = bib.type
+        # bib_existing.name = bib.name
+        # tags_existing = self.__proc_bib_dict(bib_existing.tags)
+        # tags_existing.update(tags)
+
+        try:
+            self.operate(
+                "update",
+                type=bib.type,
+                name=bib.name,
+                bibstring=str(bib),
+                citestring=bib.to_plaintext(style=style),
+                **tags,
+            )
+            # self.operate(
+            #     "update",
+            #     type=bib_existing.type,
+            #     name=bib_existing.name,
+            #     bibstring=str(bib_existing),
+            #     citestring=bib_existing.to_plaintext(style=style),
+            #     **tags_existing,
+            # )
+        except:
+            return f"Fail to update record: '{bib.name}'"
+        return f"Updated record '{bib.name}' with UID={match[0][0]}."
 
     def remove_bibtex(self, **kwargs):
         opt = {
