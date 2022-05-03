@@ -139,18 +139,33 @@ class BibTeXDatabase:
 
     def add_bibtex(self, bibtex, name=None, style="IEEEtran"):
         bib = bibtex if isinstance(bibtex, BibTeXEntry) else BibTeXEntry(bibtex, force_name=True)
+        if name is not None:
+            bib.name = name
         tags = self.__proc_bib_dict(bib.tags)
         try:
             self.operate(
                 "insert",
                 type=bib.type,
-                name=bib.name if name is None else name,
+                name=bib.name,
                 bibstring=str(bib),
                 citestring=bib.to_plaintext(style=style),
                 **tags,
             )
         except sqlite3.IntegrityError:
-            return f"Record already exists. Nothing to do."
+            bib_existing = BibTeXEntry(self.search_bibtex(name=bib.name)[0][3])
+            if (
+                bib.tags.get("journal", "") != bib_existing.tags.get("journal", "")
+                or bib.tags.get("booktitle", "") != bib_existing.tags.get("booktitle", "")
+            ):
+                idx = 1
+                retry = True
+                while retry:
+                    idx += 1
+                    name = bib.name + f"_{idx}"
+                    retry = len(self.search_bibtex(name=name)) > 0
+                return self.add_bibtex(bibtex, name=name, style=style)
+            else:
+                return f"Record already exists. Nothing to do."
         return f"Inserted with UID={self.__cursor.lastrowid}."
 
     def add_refstr(self, refstr, name=None, type="article", style="IEEEtran"):
@@ -163,6 +178,7 @@ class BibTeXDatabase:
             bib.name = name
         tags = self.__proc_bib_dict(bib.tags)
         match = self.search_bibtex(name=bib.name)
+        match = [m for m in match if m[2] == bib.name]
         if len(match) != 1:
             return f"{len(match)} records found. Do nothing."
         # bib_existing = BibTeXEntry(match[0][3])

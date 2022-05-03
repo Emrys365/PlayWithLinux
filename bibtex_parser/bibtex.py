@@ -227,6 +227,8 @@ predefined_string = {
     # "csl": "Comput. Speech Lang.",
     "lrec": "Proc. International Conference on Language Resources and Evaluation (LREC)",
     # "lrec": "Proc. LREC",
+    "iclr": "Proc. ICLR",
+    # "iclr": "Proc. International Conference on Learning Representations (ICLR)",
     "icml": "Proc. ICML",
     # "icml": "Proc. International Conference on Machine Learning (ICML)",
     "acl": "Proc. ACL",
@@ -236,6 +238,9 @@ predefined_string = {
     "emnlp": "Proc. EMNLP",
     # "emnlp": "Proc. Conference on Empirical Methods in Natural Language Processing (EMNLP)",
     "waspaa": "Proc. IEEE WASPAA",
+    # "waspaa": "Proc. IEEE Workshop on Applications of Signal Processing to Audio and Acoustics (WASPAA)",
+    "iwaenc": "Proc. IWAENC",
+    # "iwaenc": "Proc. International Workshop on Acoustic Signal Enhancement (IWAENC)",
     "eusipco": "Proc. IEEE EUSIPCO",
 }
 
